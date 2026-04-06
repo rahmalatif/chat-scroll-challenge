@@ -37,3 +37,7 @@ Auto-scroll is triggered only when the user is near the bottom.
 Manual scrolling disables auto-scroll temporarily.
 Auto-scroll resumes automatically when the user scrolls back to the bottom.
 Streaming messages also respect the auto-scroll state.
+
+
+## Deployed URL
+[https://amazing-site-123.netlify.app](https://quiet-sprite-4e726e.netlify.app/)
