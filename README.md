@@ -1,55 +1,39 @@
-# Chat Auto-Scroll Challenge
+UX Issues Identified and Fixed
+1. Auto-scroll always triggered on new messages
 
-## Setup
+Issue:
+The chat view always scrolled to the bottom whenever a new message was added, even if the user was reading older messages.
 
-1. Get a free Gemini API key from [ai.google.dev](https://ai.google.dev)
-2. Run `flutter pub get`
-3. Run `flutter run` (web, macOS, or any platform)
-4. Enter your API key and start chatting
+Fix:
+Implemented conditional auto-scroll logic. The chat now checks whether the user is currently at the bottom before automatically scrolling. Auto-scroll only happens if the user is already near the bottom.
 
-## Your Task
+2. Auto-scroll during streaming responses
 
-This app has scroll UX issues. Compare it against the reference implementation and fix them.
+Issue:
+While messages were streaming in chunks, the chat continuously forced scrolling to the bottom, which made it impossible for the user to read older messages while a response was still streaming.
 
-**Reference:** https://iman-admin.github.io/chat-scroll-demo/
+Fix:
+Auto-scroll during streaming is now conditional. The chat only scrolls while streaming if the user is at the bottom. If the user scrolls up, auto-scroll pauses until the user scrolls back down.
 
-Test these scenarios in the reference demo before you start coding. Start by sending a message that produces a long response to fill the screen (e.g. _"Write a detailed essay about the history of the internet"_). If the response is too short, send another one.
+3. Pause auto-scroll on manual scroll
 
-1. Send a message and let the response stream in.
-2. While a response is streaming, scroll up manually.
-3. While scrolled up, send a new message.
-4. While a response is streaming, scroll back down to the bottom.
+Issue:
+When the user manually scrolled up, the chat did not properly pause auto-scroll behavior.
 
-Your solution will be scored primarily on how closely it matches the reference. You are free to use any AI tools you'd like.
+Fix:
+Added scroll position tracking to detect whether the user is at the bottom or not. Auto-scroll is paused when the user scrolls up and resumes automatically when the user scrolls back to the bottom.
 
-## How to Submit
+4. Resume auto-scroll when returning to bottom
 
-1. Clone this repo into a **private** repository on your own GitHub account.
-2. Implement your solution.
-3. Deploy your solution to the web.
-4. Update this README with:
-   - The UX issues you identified and fixed.
-   - Your deployed URL.
-   - Include screen recordings for all five scenarios and the deployed URL below.
-5. Add **IMan-admin** as a collaborator to your private repo.
-6. Send us the link to your repo.
+Issue:
+Auto-scroll did not always resume correctly after the user manually scrolled back to the bottom.
 
+Fix:
+Implemented bottom detection logic so that once the user scrolls near the bottom again, auto-scroll is re-enabled automatically for new and streaming messages.
 
-### Deployed URL
-
-[Live Demo](https://your-deployed-url.com)
-
-### Screen Recordings
-
-- **Scenario 1 (Basic Auto-Scroll):** [Watch Recording](https://your-recording/scenario1)
-- **Scenario 2 (Pause on Manual Scroll):** [Watch Recording](https://your-hrecording/scenario2)
-- **Scenario 3 (Send While Scrolled Up):** [Watch Recording](https://your-recording/scenario3)
-- **Scenario 4 (Resume Auto-Scroll After Scroll Down):** [Watch Recording](https://your-recording/scenario4)
- 
-
-## Evaluation Criteria
-
-- Does each scenario work correctly in isolation?
-- Do all four scenarios work together without regressions?
-- Does the behavior match the reference demo?
-- Is the code clean, testable, and well-separated?
+Technical Implementation Summary:
+Implemented scroll position tracking using ScrollController.
+Auto-scroll is triggered only when the user is near the bottom.
+Manual scrolling disables auto-scroll temporarily.
+Auto-scroll resumes automatically when the user scrolls back to the bottom.
+Streaming messages also respect the auto-scroll state.
