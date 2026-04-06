@@ -44,6 +44,10 @@ Streaming messages also respect the auto-scroll state.
 
 Screen Recordings:
 scenario 1 : https://drive.google.com/file/d/1fPD4hPiQVhDm9v6ahuG6WUtQbKRip5DM/view?usp=drive_link
+
 scenario 2 : https://drive.google.com/file/d/1xFQ5rxkQGyabaxY7dfoufiklNqJUry0M/view?usp=drive_link
+
+
 scenario 3 : https://drive.google.com/file/d/1cJtyxT1_QyG4MVAGHc_FHVpg5Fp6WT0t/view?usp=drive_link
+
 scenario 4 : https://drive.google.com/file/d/1gcf_xqKk6Ynz6SHut_wcldiFFrgD-9Lt/view?usp=drive_link
