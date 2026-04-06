@@ -41,12 +41,13 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
   late ChatSession _chatSession;
   late final GeminiStreamManager _streamManager;
 
+  bool _shouldAutoScroll = true;
   bool _isStreaming = false;
   StreamSubscription? _currentStreamSubscription;
   String? _currentStreamId;
   bool _isUserScrollingUp = false;
   bool _showScrollDownButton = false;
-  double _previousMaxScrollExtent = 0;
+
   @override
   void initState() {
     super.initState();
@@ -69,28 +70,26 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
+
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.offset;
 
-    bool isUp = (maxScroll - currentScroll) > 100;
+    final isAtBottom = (maxScroll - currentScroll) < 30;
 
-    if (isUp != _showScrollDownButton) {
+    if (_isUserScrollingUp == isAtBottom) {
       setState(() {
-        _showScrollDownButton = isUp;
-        _isUserScrollingUp = isUp;
+        _isUserScrollingUp = !isAtBottom;
+        _showScrollDownButton = !isAtBottom;
       });
     }
   }
 
-
   void _scrollToBottom() {
-    if (_isUserScrollingUp || !_scrollController.hasClients) return;
+    if (!_scrollController.hasClients) return;
 
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-    );
+    if (_isUserScrollingUp) return;
+
+    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
   }
 
   @override
@@ -146,69 +145,44 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Gemini Chat')),
       body: Stack(
-        children:[ ChangeNotifierProvider.value(
-          value: _streamManager,
-          child: Chat(
-            builders: Builders(
-              chatAnimatedListBuilder: (context, itemBuilder) {
-                return ChatAnimatedList(
-                  scrollController: _scrollController,
-                  itemBuilder: itemBuilder,
-                );
-              },
-              imageMessageBuilder:
-                  (
-                    context,
-                    message,
-                    index, {
-                    required bool isSentByMe,
-                    MessageGroupStatus? groupStatus,
-                  }) => FlyerChatImageMessage(
-                    message: message,
-                    index: index,
-                    showTime: false,
-                    showStatus: false,
-                  ),
-              composerBuilder: (context) => _Composer(
-                isStreaming: _isStreaming,
-                onStop: _stopCurrentStream,
-              ),
-              textMessageBuilder:
-                  (
-                    context,
-                    message,
-                    index, {
-                    required bool isSentByMe,
-                    MessageGroupStatus? groupStatus,
-                  }) => FlyerChatTextMessage(
-                    message: message,
-                    index: index,
-                    showTime: false,
-                    showStatus: false,
-                    receivedBackgroundColor: Colors.transparent,
-                    padding: message.authorId == _agent.id
-                        ? EdgeInsets.zero
-                        : const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                  ),
-              textStreamMessageBuilder:
-                  (
-                    context,
-                    message,
-                    index, {
-                    required bool isSentByMe,
-                    MessageGroupStatus? groupStatus,
-                  }) {
-                    final streamState = context
-                        .watch<GeminiStreamManager>()
-                        .getState(message.streamId);
-                    return FlyerChatTextStreamMessage(
+        children: [
+          ChangeNotifierProvider.value(
+            value: _streamManager,
+            child: Chat(
+              builders: Builders(
+                chatAnimatedListBuilder: (context, itemBuilder) {
+                  return ChatAnimatedList(
+                    scrollController: _scrollController,
+                    itemBuilder: itemBuilder,
+                  );
+                },
+                imageMessageBuilder:
+                    (
+                      context,
+                      message,
+                      index, {
+                      required bool isSentByMe,
+                      MessageGroupStatus? groupStatus,
+                    }) => FlyerChatImageMessage(
                       message: message,
                       index: index,
-                      streamState: streamState,
-                      chunkAnimationDuration: _kChunkAnimationDuration,
+                      showTime: false,
+                      showStatus: false,
+                    ),
+                composerBuilder: (context) => _Composer(
+                  isStreaming: _isStreaming,
+                  onStop: _stopCurrentStream,
+                ),
+                textMessageBuilder:
+                    (
+                      context,
+                      message,
+                      index, {
+                      required bool isSentByMe,
+                      MessageGroupStatus? groupStatus,
+                    }) => FlyerChatTextMessage(
+                      message: message,
+                      index: index,
                       showTime: false,
                       showStatus: false,
                       receivedBackgroundColor: Colors.transparent,
@@ -218,31 +192,55 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
                               horizontal: 16,
                               vertical: 10,
                             ),
-                    );
-                  },
+                    ),
+                textStreamMessageBuilder:
+                    (
+                      context,
+                      message,
+                      index, {
+                      required bool isSentByMe,
+                      MessageGroupStatus? groupStatus,
+                    }) {
+                      final streamState = context
+                          .watch<GeminiStreamManager>()
+                          .getState(message.streamId);
+                      return FlyerChatTextStreamMessage(
+                        message: message,
+                        index: index,
+                        streamState: streamState,
+                        chunkAnimationDuration: _kChunkAnimationDuration,
+                        showTime: false,
+                        showStatus: false,
+                        receivedBackgroundColor: Colors.transparent,
+                        padding: message.authorId == _agent.id
+                            ? EdgeInsets.zero
+                            : const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                      );
+                    },
+              ),
+              chatController: _chatController,
+              crossCache: _crossCache,
+              currentUserId: _currentUser.id,
+              onAttachmentTap: _handleAttachmentTap,
+              onMessageSend: _handleMessageSend,
+              resolveUser: (id) => Future.value(switch (id) {
+                'me' => _currentUser,
+                'agent' => _agent,
+                _ => null,
+              }),
+              theme: ChatTheme.fromThemeData(theme),
             ),
-            chatController: _chatController,
-            crossCache: _crossCache,
-            currentUserId: _currentUser.id,
-            onAttachmentTap: _handleAttachmentTap,
-            onMessageSend: _handleMessageSend,
-            resolveUser: (id) => Future.value(switch (id) {
-              'me' => _currentUser,
-              'agent' => _agent,
-              _ => null,
-            }),
-            theme: ChatTheme.fromThemeData(theme),
           ),
-        ),
-      ],
+        ],
       ),
     );
   }
 
   void _handleMessageSend(String text) async {
-    // 1. احفظي طول القائمة "قبل" ما الرسالة تتضاف
-    _previousMaxScrollExtent = _scrollController.position.maxScrollExtent;
-    final wasUp = _showScrollDownButton;
+    final wasAtBottom = _shouldAutoScroll;
 
     await _chatController.insertMessage(
       TextMessage(
@@ -253,22 +251,11 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
       ),
     );
 
-    if (wasUp) {
-      // 2. ثبتي الشاشة عند الطول القديم عشان الرسالة الجديدة متسحبكيش لتحت
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.jumpTo(_previousMaxScrollExtent);
-        }
-        setState(() {
-          _isUserScrollingUp = true;
-          _showScrollDownButton = true;
-        });
-      });
-    } else {
-      // لو تحت، انزلي عادي للقاع الجديد
-      _isUserScrollingUp = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (wasAtBottom) {
+        _scrollToBottom();
+      }
+    });
 
     _sendContent(Content.text(text));
   }
