@@ -46,10 +46,11 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
   String? _currentStreamId;
   bool _isUserScrollingUp = false;
   bool _showScrollDownButton = false;
-
+  double _previousMaxScrollExtent = 0;
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _streamManager = GeminiStreamManager(
       chatController: _chatController,
       chunkAnimationDuration: _kChunkAnimationDuration,
@@ -64,24 +65,23 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
     );
 
     _chatSession = _model.startChat();
-    _scrollController.addListener(_onScroll);
   }
 
   void _onScroll() {
-    if (_scrollController.hasClients) {
-      final maxScroll = _scrollController.position.maxScrollExtent;
-      final currentScroll = _scrollController.offset;
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
 
-      bool isUp = (maxScroll - currentScroll) > 100;
+    bool isUp = (maxScroll - currentScroll) > 100;
 
-      if (isUp != _showScrollDownButton) {
-        setState(() {
-          _showScrollDownButton = isUp;
-          _isUserScrollingUp = isUp;
-        });
-      }
+    if (isUp != _showScrollDownButton) {
+      setState(() {
+        _showScrollDownButton = isUp;
+        _isUserScrollingUp = isUp;
+      });
     }
   }
+
 
   void _scrollToBottom() {
     if (_isUserScrollingUp || !_scrollController.hasClients) return;
@@ -92,6 +92,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
       curve: Curves.easeOut,
     );
   }
+
   @override
   void dispose() {
     _currentStreamSubscription?.cancel();
@@ -145,8 +146,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Gemini Chat')),
       body: Stack(
-        children:[
-          ChangeNotifierProvider.value(
+        children:[ ChangeNotifierProvider.value(
           value: _streamManager,
           child: Chat(
             builders: Builders(
@@ -233,39 +233,16 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
             }),
             theme: ChatTheme.fromThemeData(theme),
           ),
-
         ),
-
-          if (_showScrollDownButton)
-            Positioned(
-              bottom: 120,
-              right: 20,
-              child: FloatingActionButton(
-                mini: true,
-                backgroundColor: theme.primaryColor,
-                onPressed: () {
-                  setState(() {
-                    _isUserScrollingUp = false;
-                    _showScrollDownButton = false;
-                  });
-                  _scrollController.animateTo(
-                    _scrollController.position.maxScrollExtent,
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeOut,
-                  );
-                },
-                child: const Icon(Icons.arrow_downward, color: Colors.white),
-              ),
-            ),
       ],
       ),
-
     );
   }
 
   void _handleMessageSend(String text) async {
+    // 1. احفظي طول القائمة "قبل" ما الرسالة تتضاف
+    _previousMaxScrollExtent = _scrollController.position.maxScrollExtent;
     final wasUp = _showScrollDownButton;
-    final currentOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
 
     await _chatController.insertMessage(
       TextMessage(
@@ -277,22 +254,25 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
     );
 
     if (wasUp) {
-      _isUserScrollingUp = true;
-
+      // 2. ثبتي الشاشة عند الطول القديم عشان الرسالة الجديدة متسحبكيش لتحت
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
-          _scrollController.jumpTo(currentOffset);
+          _scrollController.jumpTo(_previousMaxScrollExtent);
         }
         setState(() {
+          _isUserScrollingUp = true;
           _showScrollDownButton = true;
         });
       });
     } else {
+      // لو تحت، انزلي عادي للقاع الجديد
+      _isUserScrollingUp = false;
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
 
     _sendContent(Content.text(text));
   }
+
   void _handleAttachmentTap() async {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
