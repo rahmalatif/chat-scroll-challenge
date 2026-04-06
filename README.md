@@ -30,7 +30,6 @@ Auto-scroll did not always resume correctly after the user manually scrolled bac
 
 Fix:
 Implemented bottom detection logic so that once the user scrolls near the bottom again, auto-scroll is re-enabled automatically for new and streaming messages.
-
 Technical Implementation Summary:
 Implemented scroll position tracking using ScrollController.
 Auto-scroll is triggered only when the user is near the bottom.
